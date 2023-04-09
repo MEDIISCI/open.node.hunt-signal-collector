@@ -2,11 +2,72 @@
 <html lang="zh-TW">
 	<head>
 		<meta http-equiv="charset" value="utf-8" />
+		<script src="./ejs.min.js"></script>
+		<script src="./global.js"></script>
+		<link type='text/css' rel="stylesheet" href="./style.css" />
 	</head>
 	<body>
-		<main id="main-viewport">
-			
+		<main class='main-page' id="main-viewport">
+			<button id="btn-add-strategy">新增策略</button>
+			<div id="strategy-list"></div>
 		</main>
+		<div id="add-overlay" class="overlay" style="display:none;">
+			<div class="panel">
+				<textarea id="strategy-input"></textarea>
+				<div class='buttons'>
+					<button id="confirm-add">確認新增</button>
+					<button id="cancel-add">取消</button>
+				</div>
+			</div>
+		</div>
+		<script type="text/html" tmpl="strategy">
+			<div class='strategy-item'>
+				<div class="id">
+					<div class="strategy_id"><%=strategy.id%></div>
+					<div class="create_time"><%=strategy.ts%></div>
+				</div>
+				<div class="content">
+					<div class="info-group">
+						<div class="name">標籤</div>
+						<div class='context'>
+							<input type="text" value="<%=strategy.name%>" disabled />
+						</div>
+					</div>
+					<div class="info-group">
+						<div class="name">AIHunter WebHook 網址</div>
+						<div class='context'>
+							<input type="text" value="<%=strategy.hook_url%>" disabled />
+						</div>
+					</div>
+					<div class="info-group">
+						<div class="name">訊號源</div>
+						<div class="sources">
+							<ul>
+								<% for(const source of Object.values(strategy.sources)) { %>
+								<li>
+									<div class='id'><%=source.id%></div>
+									<div class="content">
+										<div class="info-group">
+											<div class="name">標籤</div>
+											<div class='context'>
+												<input type="text" value="<%=source.name%>" disabled />
+											</div>
+										</div>
+										<div class="info-group">
+											<div class="name">WebHook 網址</div>
+											<div class='context'>
+												<input type="text" value="<%='https://signal.aihunter.net/hook/' + source.id%>"  disabled />
+											</div>
+										</div>
+									</div>
+								</li>
+								<% } %>
+							</ul>
+						</div>
+					</div>
+				</div>
+			</div>
+		</script>
 		<script>
 			(()=>{
 				const now = Date.now();

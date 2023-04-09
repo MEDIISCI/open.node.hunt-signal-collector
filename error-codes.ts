@@ -2,6 +2,8 @@ export const ErrorCode = Object.freeze({
 	UNKOWN_ERROR: 'core#unknown-error',
 
 	UNAUTHORIZED_ACCESS: 'auth#unauthorized',
+	ACCOUNT_NOT_FOUND: 'auth#account-not-found',
+	INVALID_PASSWORD: 'auth#invalid-password',
 	INVALID_PAYLOAD_FORMAT: 'parse#invalid-error-format',
 
 	STRATEGY_NOT_FOUND: 'error#strategy-not-found',

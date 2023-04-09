@@ -5,17 +5,23 @@ import fs from "fs";
 // Type to the configurable fiels
 export interface ConfigFormat {
 	serve?: { host?:string; port?:number; };
-	auth_secret?: Buffer;
 	document_root?: string|null;
 	strategy_root?: string;
+	init_data?: {
+		account:string;
+		password:string;
+	}
 }
 
 // The default values
 const config:Required<ConfigFormat> = {
 	serve: { host:'127.0.0.1', port:2280 },
-	auth_secret: Buffer.from([0x01, 0x23, 0x45, 0x67]),
 	document_root: null,
-	strategy_root: 'strategy_root'
+	strategy_root: `${__dirname}/strategy_root`,
+	init_data: {
+		account: 'hunter-collector',
+		password: 'yDG5cEoJgwqqxc60ZbXK',
+	}
 };
 export default config;
 

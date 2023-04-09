@@ -4,10 +4,9 @@ html {
 
 body {
   width: 100vw;
-  height: 100vh;
-  background: #000;
-  color: #FFF;
   overflow: auto;
+  padding: 0;
+  margin: 0;
 }
 
 main.login-page {
@@ -27,6 +26,170 @@ main.login-page .panel button, main.login-page .panel label {
 }
 main.login-page .panel button:first-child, main.login-page .panel label:first-child {
   margin-top: 0;
+}
+
+main.main-page {
+  width: calc(100% - 2rem);
+  margin: 1rem;
+}
+main.main-page > button#btn-add-strategy {
+  margin-bottom: 1rem;
+  width: 100%;
+}
+main.main-page > div#strategy-list > div.strategy-item {
+  display: grid;
+  box-sizing: border-box;
+  margin-bottom: 1rem;
+  grid-template-rows: auto auto auto;
+  border: 2px solid #000;
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+main.main-page > div#strategy-list > div.strategy-item:last-child {
+  margin-bottom: 0;
+}
+main.main-page > div#strategy-list > div.strategy-item > .id {
+  padding-left: 0.5rem;
+  background: #AFA;
+  font-size: 1rem;
+  font-weight: bolder;
+  border-bottom: 1px solid #000;
+  display: grid;
+  grid-template-columns: 1fr 250px;
+}
+main.main-page > div#strategy-list > div.strategy-item > .id > div.create_time {
+  padding: 0 0.5rem;
+  background: #FAF;
+  text-align: center;
+  border-left: 1px solid #000;
+}
+main.main-page > div#strategy-list > div.strategy-item > .content {
+  font-size: 1rem;
+}
+main.main-page > div#strategy-list > div.strategy-item > .content > .info-group {
+  border-bottom: 1px solid #000;
+}
+main.main-page > div#strategy-list > div.strategy-item > .content > .info-group:last-child {
+  border-bottom: 0;
+}
+main.main-page > div#strategy-list > div.strategy-item > .content > .info-group > .name {
+  font-size: 0.8rem;
+  padding-left: 0.5rem;
+  background: #FAA;
+  font-weight: bolder;
+  border-bottom: 1px solid #000;
+}
+main.main-page > div#strategy-list > div.strategy-item > .content > .info-group > .context {
+  display: grid;
+  grid-template-columns: 1fr auto;
+}
+main.main-page > div#strategy-list > div.strategy-item > .content > .info-group > .context input {
+  border: none;
+}
+main.main-page > div#strategy-list > div.strategy-item > .content > .info-group > .context button {
+  border: none;
+  border-left: 1px solid #000;
+  background: #CCC;
+  color: #000;
+}
+main.main-page > div#strategy-list > div.strategy-item > .content > .info-group > .sources {
+  margin-left: 1.5rem;
+  border-left: 1px solid #000;
+}
+main.main-page > div#strategy-list > div.strategy-item > .content > .info-group > .sources > ul {
+  padding-left: 0;
+  margin: 0;
+  list-style: none;
+}
+main.main-page > div#strategy-list > div.strategy-item > .content > .info-group > .sources > ul > li {
+  border-top: 1px solid #000;
+}
+main.main-page > div#strategy-list > div.strategy-item > .content > .info-group > .sources > ul > li:first-child {
+  border-top: 0;
+}
+main.main-page > div#strategy-list > div.strategy-item > .content > .info-group > .sources > ul > li.add-source > button {
+  display: block;
+  width: 100%;
+  background: #CCC;
+  color: #000;
+  border: none;
+  border-top: 1px solid #000;
+}
+main.main-page > div#strategy-list > div.strategy-item > .content > .info-group > .sources > ul > li.add-source:first-child > button {
+  border-top: 0;
+}
+main.main-page > div#strategy-list > div.strategy-item > .content > .info-group > .sources > ul > li > .id {
+  padding-left: 0.5rem;
+  background: #CCF;
+  font-size: 0.8rem;
+  font-weight: bolder;
+  border-bottom: 1px solid #000;
+}
+main.main-page > div#strategy-list > div.strategy-item > .content > .info-group > .sources > ul > li > .content > .info-group {
+  border-bottom: 1px solid #000;
+}
+main.main-page > div#strategy-list > div.strategy-item > .content > .info-group > .sources > ul > li > .content > .info-group:last-child {
+  border-bottom: 0;
+}
+main.main-page > div#strategy-list > div.strategy-item > .content > .info-group > .sources > ul > li > .content > .info-group > .name {
+  font-size: 0.8rem;
+  padding-left: 0.5rem;
+  background: #FAA;
+  font-weight: bolder;
+  border-bottom: 1px solid #000;
+}
+main.main-page > div#strategy-list > div.strategy-item > .content > .info-group > .sources > ul > li > .content > .info-group > .context {
+  display: grid;
+  grid-template-columns: 1fr auto;
+}
+main.main-page > div#strategy-list > div.strategy-item > .content > .info-group > .sources > ul > li > .content > .info-group > .context input {
+  border: none;
+}
+main.main-page > div#strategy-list > div.strategy-item > .content > .info-group > .sources > ul > li > .content > .info-group > .context button {
+  border: none;
+  border-left: 1px solid #000;
+  background: #CCC;
+  color: #000;
+}
+
+div.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+div.overlay div.panel {
+  width: 90vw;
+  height: 90vh;
+  display: grid;
+  grid-template-rows: 1fr auto;
+  background: #AAA;
+}
+div.overlay div.panel > textarea {
+  tab-size: 4;
+  width: calc(100% - 2rem);
+  margin: 1rem;
+  border: 1px solid #000;
+}
+div.overlay div.panel > .buttons {
+  width: calc(100% - 2rem);
+  margin: 0 1rem 1rem;
+  display: grid;
+  grid-gap: 1rem;
+  grid-template-columns: 1fr 1fr;
+}
+
+button {
+  cursor: pointer;
+}
+
+input[type=text], input[type=password] {
+  cursor: text;
 }
 
 /*# sourceMappingURL=style.css.map */

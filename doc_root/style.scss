@@ -1,8 +1,8 @@
+$content_border:1px solid #000;
+
 html { font-size:16px; }
 body {
-	width:100vw; height:100vh;
-	background:#000; color:#FFF;
-	overflow:auto;
+	width:100vw; overflow:auto; padding:0; margin:0;
 }
 main.login-page {
 	width:100%; height:100%;
@@ -25,3 +25,133 @@ main.login-page {
 		}
 	}
 }
+
+main.main-page {
+	width:calc(100% - 2rem); margin:1rem;
+
+	& > button#btn-add-strategy { margin-bottom:1rem; width:100%; }
+
+	& > div#strategy-list { 
+		& > div.strategy-item {
+			display:grid; box-sizing:border-box; margin-bottom:1rem;
+			grid-template-rows: auto auto auto;
+			border:2px solid #000; border-radius:0.5rem; overflow:hidden;
+
+			&:last-child { margin-bottom:0; }
+
+			& > .id {
+				padding-left:.5rem; 
+				background:#AFA;
+				font-size:1rem; font-weight:bolder;
+				border-bottom:$content_border;
+				display:grid; grid-template-columns:1fr 250px;
+
+				& > div.create_time {
+					padding:0 0.5rem; background:#FAF; text-align:center; border-left:$content_border;
+				}
+			}
+			& > .content {
+				font-size:1rem;
+
+				& > .info-group {
+					border-bottom:$content_border;
+					&:last-child { border-bottom:0; }
+
+					& > .name {
+						font-size:.8rem; 
+						padding-left:.5rem; 
+						background:#FAA;
+						font-weight:bolder;
+						border-bottom:$content_border;
+					}
+					& > .context {
+						display:grid; grid-template-columns:1fr auto;
+
+						input {border:none;}
+						button {
+							border:none; border-left:$content_border;
+							background:#CCC; color:#000;
+						}
+					}
+					& > .sources {
+						margin-left:1.5rem;
+						border-left:$content_border;
+
+						& > ul {
+							padding-left:0; margin:0;
+							list-style:none;
+
+							& > li {
+								border-top:$content_border;
+								&:first-child { border-top:0; }
+
+								&.add-source > button {
+									display:block; width:100%;
+									background:#CCC; color:#000;
+									border:none;
+									border-top:$content_border;
+								}
+
+								&.add-source:first-child > button { border-top:0; }
+
+								& > .id {
+									padding-left:.5rem; 
+									background:#CCF;
+									font-size:.8rem;
+									font-weight:bolder;
+									border-bottom:$content_border;
+								}
+
+								& > .content {
+									& > .info-group {
+										border-bottom:$content_border;
+										&:last-child { border-bottom:0; }
+
+										& > .name {
+											font-size:.8rem; 
+											padding-left:.5rem; 
+											background:#FAA;
+											font-weight:bolder;
+											border-bottom:$content_border;
+										}
+										& > .context {
+											display:grid; grid-template-columns:1fr auto;
+						
+											input {border:none;}
+											button {
+												border:none; border-left:$content_border;
+												background:#CCC; color:#000;
+											}
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
+div.overlay {
+	position:fixed; top:0; left:0;
+	width:100vw; height:100vh;
+	background:rgba(0, 0, 0, .7);
+	display:flex; align-items:center; justify-content:center;
+	
+	div.panel {
+		width:90vw; height:90vh;
+		display:grid; grid-template-rows:1fr auto;
+		background:#AAA;
+
+		& > textarea { tab-size:4; width:calc(100% - 2 * 1rem); margin:1rem; border:1px solid #000; }
+		& > .buttons {
+			width:calc(100% - 2 * 1rem); margin:0 1rem 1rem;
+			display:grid; grid-gap:1rem; grid-template-columns: 1fr 1fr;
+		}
+	}
+}
+
+button { cursor:pointer; }
+input[type="text"],input[type="password"] { cursor:text; }
