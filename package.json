@@ -1,0 +1,24 @@
+{
+	"private": true,
+	"name": "tmpl-service",
+	"version": "0.0.0",
+	"description": "This is a template project for services.",
+	"main": "_dist/index.js",
+	"scripts": {
+		"prebuild": "rm -rf ./_dist",
+		"build": "tsc",
+		"postbuild": "sass ./doc_root/style.scss ./doc_root/style.css"
+	},
+	"author": "JCloudYu",
+	"license": "ISC",
+	"dependencies": {
+		"@fastify/static": "^6.10.0",
+		"@types/node": "^18.15.10",
+		"extes": "^4.2.1",
+		"fastify": "^4.15.0",
+		"reroot": "^1.5.1",
+		"sass": "^1.61.0",
+		"shared-storage": "github:JCloudYu/shared-storage#c45e6611deccd28b1cf77421a7e948b486dda8f0",
+		"trimid": "^4.1.0"
+	}
+}

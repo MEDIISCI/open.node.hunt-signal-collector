@@ -1,0 +1,14 @@
+# OS dependent cache files and directries
+.DS_Store
+Thumbs.db
+
+# IDE dependent files and direcotries
+.idea
+.vscode
+
+# Runtime dependent directories
+node_modules
+_dist
+
+# Runtime dependent files
+config.ts
