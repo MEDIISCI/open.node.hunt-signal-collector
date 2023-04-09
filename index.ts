@@ -28,14 +28,50 @@ Promise.chain(async()=>{
 	$('system').settings_path = $('system').strategy_root + '/settings.json';
 	$('system').states = {};
 	
+
+	// Init io subsystem
+	{
+		$('io').queue = [];
+		$('io').timeout = setTimeout(ProcessQueue, 500);
+
+		function ProcessQueue() {
+			const queue = $('io').queue.splice(0);
+			Promise.resolve()
+			.then(()=>{
+				if ( queue.length < 0 ) return;
+				
+				const now = Math.floor(Date.now()/1000);
+				fs.writeFileSync(
+					$('system').config_path, 
+					JSON.stringify(
+						Object.assign({}, $('strategy'), {update_time:now})
+					)
+				);
+
+				$('strategy').update_time = now;
+			})
+			.catch((e)=>{
+				console.error("Unable to update strategy runtime file!", e);
+				$('io').queue.push(Date.now());
+			})
+			.finally(()=>{
+				$('io').timeout = setTimeout(ProcessQueue, 500);
+			});
+		}
+	}
+
+	
 	// Init storage
 	if ( !fs.existsSync($('system').config_path) ) {
 		fs.mkdirSync($('system').strategy_root, {recursive:true});
-		fs.writeFileSync($('system').config_path, JSON.stringify({
-			versin: "1",
+		
+		const init_storage:StrategyConfig = {
+			version: "1",
 			strategy: {},
-			update_time: Math.floor(Date.now()/1000)
-		}));
+			update_time: Math.floor(Date.now()/1000),
+			create_time: Math.floor(Date.now()/1000)
+		}
+		fs.writeFileSync($('system').config_path, JSON.stringify(init_storage));
 	}
 
 	// Init settings
@@ -294,8 +330,10 @@ Promise.chain(async()=>{
 					};
 				}
 				$('strategy').strategy[strategy.id] = strategy;
-				
 
+
+
+				$('io').queue.push(Date.now());
 				return res.status(200).send({id:strategy.id});
 			})
 
@@ -312,6 +350,10 @@ Promise.chain(async()=>{
 				}
 				
 				delete $('strategy').strategy[req.params.sid];
+
+
+
+				$('io').queue.push(Date.now());
 				return res.status(200).send({});
 			});
 		});

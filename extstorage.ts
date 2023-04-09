@@ -34,10 +34,15 @@ declare global {
 	interface StrategyConfig {
 		version: "1";
 		strategy: {[sid:string]: StrategyInfo};
-		update_time: number
+		update_time: number;
+		create_time: number;
 	}
 	
 	interface ExtendedSharedStorage {
+		(scope:'io'): {
+			timeout:null|NodeJS.Timeout;
+			queue:number[];
+		};
 		(scope:'system'):{
 			strategy_root: string;
 			auth_secret: Buffer;
