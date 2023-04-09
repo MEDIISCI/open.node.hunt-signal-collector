@@ -142,7 +142,6 @@
 	function UpdateStrategyList(strategy) {
 		LIST.innerHTML = '';
 		for(const strategy of Object.values($S('core').strategy)) {
-			console.log(strategy);
 			strategy.ts = (new Date(strategy.create_time * 1000)).toLocaleISOString();
 			for(const source of Object.values(strategy.sources)) {
 				source.hook_url = `${location.protocol}//${location.host}/hook/${strategy.id}/${source.id}`;
