@@ -6,7 +6,7 @@ import fs from "fs";
 export interface ConfigFormat {
 	serve?: { host?:string; port?:number; };
 	document_root?: string|null;
-	strategy_root?: string;
+	runtime_storage?: string;
 	init_data?: {
 		account:string;
 		password:string;
@@ -17,7 +17,7 @@ export interface ConfigFormat {
 const config:Required<ConfigFormat> = {
 	serve: { host:'127.0.0.1', port:2280 },
 	document_root: null,
-	strategy_root: `${__dirname}/strategy_root`,
+	runtime_storage: `${__dirname}/.runtime`,
 	init_data: {
 		account: 'hunter-collector',
 		password: 'yDG5cEoJgwqqxc60ZbXK',

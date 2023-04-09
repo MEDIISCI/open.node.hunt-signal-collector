@@ -23,7 +23,7 @@ Promise.chain(async()=>{
 
 
 	// Init variables
-	$('system').strategy_root = path.resolve(reroot.project_root, Config.strategy_root);
+	$('system').strategy_root = path.resolve(reroot.project_root, Config.runtime_storage);
 	$('system').config_path = $('system').strategy_root + '/strategy.json';
 	$('system').settings_path = $('system').strategy_root + '/settings.json';
 	$('system').states = {};
