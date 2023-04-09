@@ -35,24 +35,59 @@ Promise.chain(async()=>{
 		$('io').timeout = setTimeout(ProcessQueue, 500);
 
 		function ProcessQueue() {
-			const queue = $('io').queue.splice(0);
+			const curr_queue = $('io').queue;
+			const task = curr_queue[0];
+
 			Promise.resolve()
 			.then(()=>{
-				if ( queue.length < 0 ) return;
+				if ( curr_queue.length <= 0 ) return;
+				
+				let end = 1;
+				while(end < curr_queue.length) {
+					const curr = curr_queue[end];
+					if ( curr.t !== task.t ) break;
+					end++;
+				}
+				curr_queue.splice(0, end);
+
+
 				
 				const now = Math.floor(Date.now()/1000);
-				fs.writeFileSync(
-					$('system').config_path, 
-					JSON.stringify(
-						Object.assign({}, $('strategy'), {update_time:now})
-					)
-				);
+				if ( task.t === 'strategy' ) {
+					fs.writeFileSync(
+						$('system').config_path, 
+						JSON.stringify(
+							Object.assign({}, $('strategy'), {update_time:now})
+						)
+					);
+							
+					$('strategy').update_time = now;
+				}
+				else 
+				if ( task.t === 'state' ) {
+					const states = $('system').states;
+					for(const sid in states) {
+						const strategy_states = states[sid];
+						fs.writeFileSync(
+							$('system').strategy_root + `/state-${sid}.json`, 
+							JSON.stringify(Object.assign({}, strategy_states, {update_time:now}))
+						);
 
-				$('strategy').update_time = now;
+						strategy_states.update_time = now;
+					}
+				}
 			})
 			.catch((e)=>{
-				console.error("Unable to update strategy runtime file!", e);
-				$('io').queue.push(Date.now());
+				if ( !task ) return;
+
+				if ( task.t === 'strategy' ) {
+					console.error("Unable to update strategy runtime file!", e);
+				}
+				else 
+				if ( task.t === 'state' ) {
+					console.error("Unable to store strategy state file!", e);
+				}
+				$('io').queue.unshift(task);
 			})
 			.finally(()=>{
 				$('io').timeout = setTimeout(ProcessQueue, 500);
@@ -91,7 +126,6 @@ Promise.chain(async()=>{
 		fs.writeFileSync($('system').settings_path, JSON.stringify(settings));
 	}
 
-
 	// Load system settings
 	{
 		const system = $('system');
@@ -107,23 +141,37 @@ Promise.chain(async()=>{
 		}
 	}
 
-
-
 	// Load strategy info
 	{
+		$('system').states = {}
 		const conf = $('strategy');
 		Object.assign(conf, JSON.parse(fs.readFileSync($('system').config_path).toString('utf8')) as StrategyConfig);
 		
+
 		const states = $('system').states;
 		for(const sid in conf.strategy) {
-			const state_path = $('system').strategy_root + '/sid.json';
-			if ( !fs.existsSync(state_path) ) continue;
+			const state_path = $('system').strategy_root + `/state-${sid}.json`;
+			const strategy = conf.strategy[sid];
+			states[sid] = {pos_states:{}, update_time:Math.floor(Date.now()/1000)};
+			for(const src_id in strategy.sources){
+				states[sid].pos_states[src_id] = {long:false, short:false};
+			}
 
+
+			if ( !fs.existsSync(state_path) ) continue;
 			const content = fs.readFileSync(state_path).toString('utf8');
-			const state = JSON.parse(content);
-			states[sid] = state;
+			const stored_states = JSON.parse(content) as typeof states[string];
+			for(const src_id in strategy.sources){
+				Object.assign(states[sid].pos_states[src_id], stored_states.pos_states[src_id]);
+			}
 		}
 	}
+
+	console.log("System strategy runtime initialized:");
+	console.log($('strategy'));
+
+	console.log("System strategy state initialized:");
+	console.log($('system').states);
 
 
 
@@ -134,8 +182,189 @@ Promise.chain(async()=>{
 		root: Config.document_root||`${reroot.project_root}/doc_root`,
 		prefix: '/'
 	})
-	.post('/hook', async(req, res)=>{
+	.post<{Body:string;Params:{strategy_id:string; source_id:string}}>('/hook/:strategy_id/:source_id', async(req, res)=>{
+		const payload = req.body||'';
+		const args = payload.split(',').map((t)=>t.trim());
+
+		const strategy = $('strategy').strategy[req.params.strategy_id];
+		if ( !strategy ) {
+			return res.status(404).send({
+				scope: req.routerPath,
+				code: ErrorCode.STRATEGY_NOT_FOUND,
+				message: "Requesting strategy doesn't exist!",
+				detail: {strategy:req.params.strategy_id}
+			});
+		}
+
+		const source = strategy.sources[req.params.source_id];
+		if ( !source ) {
+			return res.status(404).send({
+				scope: req.routerPath,
+				code: ErrorCode.STRATEGY_NOT_FOUND,
+				message: "Requesting source doesn't exist!",
+				detail: {source:req.params.source_id}
+			});
+		}
+
+
+		const exchange_info = `${args[0]}`.toLowerCase();
 		
+		// Exctract symbol
+        const _symbol = `${args[1]}`.toUpperCase();
+		const usdt_pos = _symbol.indexOf('USDT');
+		if ( usdt_pos < 0 ) return;
+		const symbol = _symbol.substring(0, usdt_pos + 4);
+		
+        const positionSide = `${args[2]}`.toLowerCase() as 'long'|'short'|'flat';
+        const price = Number(args[3] as num_str);
+        const orderSide = `${args[4]}`.toLowerCase() as 'buy'|'sell';
+        const amount = Number(args[5] as num_str);
+		
+
+		const errors:string[] = [];
+		if ( exchange_info !== strategy.exchange ) errors.push('Param#1, exchange, mismatched');
+		if ( symbol !== strategy.symbol ) errors.push('Param#2, symbol, mismatched');
+        if ( ['long', 'short', 'flat'].includes(positionSide) === false ) errors.push('Param#3, side, invalid');
+        if ( Number.isNaN(price) === true || price <= 0 ) errors.push('Param#4, price, not a number or invalid range');
+        if ( ['buy', 'sell'].includes(orderSide) === false ) errors.push('Param#5, direction, invalid');
+        if ( Number.isNaN(amount) === true || amount < 0 ) errors.push('Param#6, amount, not a number or invalid range');
+		if ( amount > 0 && positionSide === 'flat' ) errors.push('Param#3 and Param#6, condition mismatched');
+		if ( errors.length > 0 ) {
+			return res.status(400).send({
+				scope: req.routerPath,
+				code: ErrorCode.INVALID_PAYLOAD_CONTENTS,
+				message: "Requesting signal is invalid!",
+				detail: {errors}
+			});
+		}
+
+		
+        
+
+		const req_info = $(req);
+		const states = $('system').states[strategy.id].pos_states;
+
+		let prev_long = 0, prev_short = 0;
+		for(const src_id in states) {
+			prev_long += states[src_id].long ? 1 : 0;
+			prev_short += states[src_id].short ? 1 : 0;
+		}
+
+
+		if ( positionSide === 'flat' ) {
+			states[source.id].long = states[source.id].short = false;
+		}
+		else {
+			states[source.id][positionSide] = amount > 0;
+		}
+		
+		let new_long = 0, new_short = 0;
+		for(const src_id in states) {
+			new_long += states[src_id].long ? 1 : 0;
+			new_short += states[src_id].short ? 1 : 0;
+		}
+
+		
+		const long_diff = new_long - prev_long, short_diff = new_short - prev_short;
+		const promises:Promise<void>[] = [];
+		if ( long_diff !== 0 ) {
+			const signal:SignalStructureV2 = {
+				version: "2",
+				exchange: strategy.exchange,
+				symbol: strategy.symbol,
+				side:'long',
+				action: 'increase',
+				safe_interval: 5_000,
+				time: req_info.req_time
+			};
+			if ( long_diff > 0 ) {
+				signal.action = prev_long > 0 ? 'increase' : 'open';
+			}
+			else {
+				signal.action = new_long > 0 ? 'decrease' : 'close';
+			}
+
+			const abort_ctrl = new AbortController();
+			const hTimeout = setTimeout(()=>abort_ctrl.abort(), 10_000);
+			promises.push(
+				fetch(strategy.hook_url, {
+					method:'POST',
+					headers: { "Content-Type": "application/json; charset=utf-8" },
+					body: JSON.stringify(signal),
+					signal:abort_ctrl.signal
+				})
+				.then(async(r)=>{
+					clearTimeout(hTimeout);
+
+					if ( r.status !== 200 ) {
+						const result = await r.text();
+						try {
+							console.error(`Abnornal server response!`, JSON.parse(result));
+						}
+						catch(e) {
+							console.error(`Abnornal server response!`, result);
+						}
+					}
+				})
+				.catch((e)=>{
+					console.error(`Unable to send signal to webhook \`${strategy.hook_url}\`!`, e)
+				})
+			);
+		}
+
+		if ( short_diff !== 0 ) {
+			const signal:SignalStructureV2 = {
+				version: "2",
+				exchange: strategy.exchange,
+				symbol: strategy.symbol,
+				side:'short',
+				action: 'increase',
+				safe_interval: 5_000,
+				time: req_info.req_time
+			};
+			if ( short_diff > 0 ) {
+				signal.action = prev_short > 0 ? 'increase' : 'open';
+			}
+			else {
+				signal.action = new_short > 0 ? 'decrease' : 'close';
+			}
+
+
+			const abort_ctrl = new AbortController();
+			const hTimeout = setTimeout(()=>abort_ctrl.abort(), 10_000);
+			promises.push(
+				fetch(strategy.hook_url, {
+					method:'POST',
+					headers: { "Content-Type": "application/json; charset=utf-8" },
+					body: JSON.stringify(signal),
+					signal:abort_ctrl.signal
+				})
+				.then(async(r)=>{
+					clearTimeout(hTimeout);
+
+					if ( r.status !== 200 ) {
+						const result = await r.text();
+						try {
+							console.error(`Abnornal server response!`, JSON.parse(result));
+						}
+						catch(e) {
+							console.error(`Abnornal server response!`, result);
+						}
+					}
+				})
+				.catch((e)=>{
+					console.error(`Unable to send signal to webhook \`${strategy.hook_url}\`!`, e)
+				})
+			);
+		}
+
+		await Promise.all(promises);
+
+		if ( promises.length > 0 ) {
+			$('io').queue.push({t:'state', sid:strategy.id});
+		}
+
+		return res.status(200).send({});
 	})
 	.register(async(fastify)=>{
 		fastify
@@ -293,6 +522,8 @@ Promise.chain(async()=>{
 				const name = `${rbody.name||''}`.trim();
 				const webhook = `${rbody.webhook||''}`.trim();
 				const sources = rbody.sources;
+				const exchange = `${rbody.exchange||''}`.trim().toLowerCase();
+				const symbol = `${rbody.symbol||''}`.trim().toUpperCase();
 
 				if ( name === '' ) error_fields.push('name');
 				if ( webhook === '' ) error_fields.push('webhook');
@@ -303,21 +534,25 @@ Promise.chain(async()=>{
 						scope: req.routerPath,
 						code: ErrorCode.MISSING_REQUIRED_FIELDS,
 						message: "Your request paylaod is invalid!",
-						detail: error_fields
+						detail: {errors:error_fields}
 					});
 				}
 
 				
 				const req_info = $(req);
+				const states = $('system').states;
+				const strategies = $('strategy').strategy;
 				const strategy:StrategyInfo = {
 					id: TrimId.NEW.toString(),
-					name: name,
+					name, exchange, symbol,
 					enabled: true,
 					hook_url: webhook,
 					sources: {},
 					update_time: req_info.req_time,
 					create_time: req_info.req_time
 				};
+				const strategy_states:typeof states[string] = {pos_states:{}, update_time:req_info.req_time};
+				
 				for(const _name of sources) {
 					const name = `${_name||''}`.trim();
 					const source_id = TrimId.NEW.toString();
@@ -328,12 +563,13 @@ Promise.chain(async()=>{
 						update_time: req_info.req_time,
 						create_time: req_info.req_time
 					};
+					strategy_states.pos_states[source_id] = {long:false, short:false};
 				}
-				$('strategy').strategy[strategy.id] = strategy;
+				strategies[strategy.id] = strategy;
 
 
 
-				$('io').queue.push(Date.now());
+				$('io').queue.push({t:'strategy'}, {t:'state', sid:strategy.id});
 				return res.status(200).send({id:strategy.id});
 			})
 
@@ -350,10 +586,11 @@ Promise.chain(async()=>{
 				}
 				
 				delete $('strategy').strategy[req.params.sid];
+				delete $('system').states[req.params.sid];
 
 
 
-				$('io').queue.push(Date.now());
+				$('io').queue.push({t:'strategy'}, {t:'state', sid:strategy.id});
 				return res.status(200).send({});
 			});
 		});
@@ -366,7 +603,7 @@ Promise.chain(async()=>{
 			detail: err instanceof Error ? {
 				code: err.code,
 				message: err.message
-			}: err
+			}: {error:err}
 		});
 	});
 

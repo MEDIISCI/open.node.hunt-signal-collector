@@ -3,6 +3,16 @@ import type os from "os";
 
 declare global {
 	interface SessionTokenInfo { iat:number; exp:number; }
+
+	interface SignalStructureV2 {
+		version: "2",
+		exchange: string,
+		symbol: string,
+		side: 'long'|'short',
+		action: 'open'|'close'|'increase'|'decrease',
+		safe_interval: num_sec;
+		time: epoch;
+	}
 	
 	interface ConfigSetings {
 		auth_secret: string;
@@ -11,6 +21,8 @@ declare global {
 
 	interface NewStrategyInput {
 		webhook:string;
+		exchange:string;
+		symbol:string;
 		name:string;
 		sources:string[];
 	}
@@ -20,6 +32,8 @@ declare global {
 		enabled:boolean;
 		hook_url:string;
 		name:string;
+		exchange:string;
+		symbol:string;
 		sources: {[sid:string]: {
 			id:string;
 			name:string;
@@ -41,7 +55,7 @@ declare global {
 	interface ExtendedSharedStorage {
 		(scope:'io'): {
 			timeout:null|NodeJS.Timeout;
-			queue:number[];
+			queue:({t:'strategy'}|{t:'state',sid:string})[];
 		};
 		(scope:'system'):{
 			strategy_root: string;
@@ -50,8 +64,8 @@ declare global {
 			config_path: string;
 			settings_path: string;
 			states: {[key:StrategyInfo['id']]:{
-				pos_count:number;	// count where source_state is true
-				source_state: {[sid:string]:boolean} // true means opened
+				pos_states: {[sid:string]:{long:boolean; short:boolean}}; // true means opened
+				update_time: epoch;
 			}};
 		};
 		(scope:'strategy'): StrategyConfig;
