@@ -1,0 +1,60 @@
+<!DOCTYPE "html">
+<html lang="zh-TW">
+	<head>
+		<meta http-equiv="charset" value="utf-8" />
+		<link type='text/css' rel="stylesheet" href="./style.css" />
+	</head>
+	<body>
+		<main id="main-viewport" class="login-page">
+			<form class="panel">
+				<label>帳號: <input name="account" type="input" /></label>
+				<label>密碼: <input name="password" type="password" /></label>
+				<button name="btn_login">登入</button>
+			</div>
+		</main>
+		<script>(()=>{
+			"use strict";
+			
+			const viewport = document.querySelector('main#main-viewport');
+			const panel = viewport.querySelector('form');
+			panel.elements.btn_login.addEventListener('click', (e)=>{
+				e.preventDefault();
+				e.stopPropagation();
+
+				const account = panel.elements.account.value.trim();
+				const password = panel.elements.password.value.trim();
+				if ( !account || !password ) {
+					alert("請輸入帳號及密碼！");
+					return;
+				}
+
+
+				const login_payload = {account, password};
+				panel.elements.btn_login.disabled = true;
+				fetch('/api/login', {
+					method:'POST',
+					headers:{"Content-Type": "application/json; charset=utf-8"},
+					body:JSON.stringify(login_payload)
+				})
+				.then(async(r)=>{
+					const response = await r.json().catch(()=>undefined);
+					if ( r.status !== 200 ) {
+						alert("登入失敗！" + (response ? '\n' + response.message : ""));
+						return;
+					}
+
+					if ( r.status === 200 ) {
+						localStorage.setItem('session.token', response.token);
+						alert("登入成功！");
+						window.location.replace('/');
+						return;
+					}
+				})
+				.catch((e)=>{
+					alert("無法登入！" + e.message);
+				})
+				.finally(()=>panel.elements.btn_login.disabled=false)
+			});
+		})();</script>
+	</body>
+</html>
