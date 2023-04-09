@@ -527,13 +527,15 @@ Promise.chain(async()=>{
 
 				if ( name === '' ) error_fields.push('name');
 				if ( webhook === '' ) error_fields.push('webhook');
+				if ( exchange === '' ) error_fields.push('exchange');
+				if ( symbol === '' ) error_fields.push('symbol');
 				if ( !Array.isArray(sources) ) error_fields.push('sources');
 
 				if ( error_fields.length > 0 ) {
 					return res.status(400).send({
 						scope: req.routerPath,
 						code: ErrorCode.MISSING_REQUIRED_FIELDS,
-						message: "Your request paylaod is invalid!",
+						message: `Your request paylaod is invalid! (${error_fields.join(', ')})`,
 						detail: {errors:error_fields}
 					});
 				}
