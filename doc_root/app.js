@@ -130,6 +130,34 @@
 				.finally(()=>cancel_add.disabled = confirm_add.disabled = false)
 			});
 		}
+
+		// Bind bubble events
+		{
+			LIST.addEventListener('click', (e)=>{
+				if ( e.target.matches('.strategy-item .id > .delete_btn, .strategy-item .id > .delete_btn *') ) {
+					const button = e.target.closest('button[data-role="btn-del-strategy"]');
+					const strategy_item = button.closest('.strategy-item');
+					const sid = strategy_item.dataset.sid;
+					const name = strategy_item.dataset.name;
+					if ( !confirm(`您確定要刪除該策略？ (${name})`) ) return;
+
+
+					button.disabled = true;
+					DeleteStrategy(sid).then((r)=>r, (e)=>e).then(async(r)=>{
+						button.disabled = true
+						if ( r instanceof Error && r.status !== 404 ) {
+							alert(`發生未預期的錯誤！請刷新頁面！如持續發生，請聯絡系統管理人員！ (${r.message})`);
+							console.error(r);
+							return;
+						}
+
+						alert('該策略已刪除！');
+						$S('core').strategy = await LoadStrategy();
+						UpdateStrategyList();
+					});
+				}
+			});
+		}
 	})
 	.catch((e)=>{
 		alert(`發生未預期的錯誤！請刷新頁面！如持續發生，請聯絡系統管理人員！ (${e.message})`);
@@ -177,10 +205,7 @@
 			}
 
 			const r = await resp.json();
-			return Promise.reject(Object.assign(new Error(r.message), {
-				status:resp.status,
-				code:r.code
-			}));
+			return Promise.reject(Object.assign(new Error(r.message), {status:resp.status, code:r.code}));
 		});
 	}
 
@@ -198,7 +223,7 @@
 			}
 
 			const r = await resp.json();
-			return Promise.reject(Object.assign(new Error(r.message), {code:r.code}));
+			return Promise.reject(Object.assign(new Error(r.message), {status:resp.status, code:r.code}));
 		});
 	}
 
@@ -219,7 +244,26 @@
 			}
 
 			const r = await resp.json();
-			return Promise.reject(Object.assign(new Error(r.message), {code:r.code}));
+			return Promise.reject(Object.assign(new Error(r.message), {status:resp.status, code:r.code}));
+		});
+	}
+
+	function DeleteStrategy(strategy_id) {
+		const path = '/api/strategy/' + strategy_id;
+		
+		return fetch(path, {
+			method:'DELETE', 
+			headers:{
+				Authorization: `Bearer ${$S('session').access_token}`
+			}
+		})
+		.then(async(resp)=>{
+			if ( resp.status === 200 ) {
+				return await resp.json();
+			}
+
+			const r = await resp.json();
+			return Promise.reject(Object.assign(new Error(r.message), {status:resp.status, code:r.code}));
 		});
 	}
 })();

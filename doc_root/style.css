@@ -55,13 +55,25 @@ main.main-page > div#strategy-list > div.strategy-item > .id {
   font-weight: bolder;
   border-bottom: 1px solid #000;
   display: grid;
-  grid-template-columns: 1fr 250px;
+  grid-template-columns: 1fr 250px auto;
 }
 main.main-page > div#strategy-list > div.strategy-item > .id > div.create_time {
   padding: 0 0.5rem;
-  background: #FAF;
+  background: #AFF;
   text-align: center;
   border-left: 1px solid #000;
+}
+main.main-page > div#strategy-list > div.strategy-item > .id > div.delete_btn {
+  padding: 0 0.5rem;
+  background: #F99;
+  text-align: center;
+  border-left: 1px solid #000;
+}
+main.main-page > div#strategy-list > div.strategy-item > .id > div.delete_btn button {
+  background: #F99;
+  width: 100%;
+  border: 0;
+  font-weight: bolder;
 }
 main.main-page > div#strategy-list > div.strategy-item > .content {
   font-size: 1rem;

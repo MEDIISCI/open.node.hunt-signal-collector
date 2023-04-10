@@ -44,10 +44,17 @@ main.main-page {
 				background:#AFA;
 				font-size:1rem; font-weight:bolder;
 				border-bottom:$content_border;
-				display:grid; grid-template-columns:1fr 250px;
+				display:grid; grid-template-columns:1fr 250px auto;
 
 				& > div.create_time {
-					padding:0 0.5rem; background:#FAF; text-align:center; border-left:$content_border;
+					padding:0 0.5rem; background:#AFF; text-align:center; border-left:$content_border;
+				}
+
+				& > div.delete_btn {
+					$bg_color: #F99;
+					padding:0 0.5rem; background:$bg_color; text-align:center; border-left:$content_border;
+					
+					button { background:$bg_color; width:100%; border:0; font-weight:bolder; }
 				}
 			}
 			& > .content {
