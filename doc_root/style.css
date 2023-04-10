@@ -87,7 +87,7 @@ main.main-page > div#strategy-list > div.strategy-item > .content > .info-group:
 main.main-page > div#strategy-list > div.strategy-item > .content > .info-group > .name {
   font-size: 0.8rem;
   padding-left: 0.5rem;
-  background: #FAA;
+  background: #CCC;
   font-weight: bolder;
   border-bottom: 1px solid #000;
 }
@@ -146,7 +146,7 @@ main.main-page > div#strategy-list > div.strategy-item > .content > .info-group 
 main.main-page > div#strategy-list > div.strategy-item > .content > .info-group > .sources > ul > li > .content > .info-group > .name {
   font-size: 0.8rem;
   padding-left: 0.5rem;
-  background: #FAA;
+  background: #CCC;
   font-weight: bolder;
   border-bottom: 1px solid #000;
 }
