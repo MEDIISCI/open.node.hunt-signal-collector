@@ -63,7 +63,7 @@ Promise.chain(async()=>{
 							
 					$('strategy').update_time = now;
 				}
-				else 
+				else
 				if ( task.t === 'state' ) {
 					const states = $('system').states;
 					for(const sid in states) {
@@ -568,7 +568,7 @@ Promise.chain(async()=>{
 					strategy_states.pos_states[source_id] = {long:false, short:false};
 				}
 				strategies[strategy.id] = strategy;
-
+				states[strategy.id] = strategy_states;
 
 
 				$('io').queue.push({t:'strategy'}, {t:'state', sid:strategy.id});
@@ -587,12 +587,21 @@ Promise.chain(async()=>{
 					});
 				}
 				
-				delete $('strategy').strategy[req.params.sid];
-				delete $('system').states[req.params.sid];
+				const sid = req.params.sid;
+				delete $('strategy').strategy[sid];
+				delete $('system').states[sid];
+				
+				
+				try {
+					fs.unlinkSync(
+						$('system').strategy_root + `/state-${sid}.json`
+					);
+				}
+				catch(e) {}
 
 
 
-				$('io').queue.push({t:'strategy'}, {t:'state', sid:strategy.id});
+				$('io').queue.push({t:'strategy'}, {t:'state', sid});
 				return res.status(200).send({});
 			});
 		});
