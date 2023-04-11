@@ -178,6 +178,17 @@ Promise.chain(async()=>{
 	const fastify = Fastify({logger:true});
 
 	fastify
+	.addHook('onRequest', (req, res)=>{
+		console.log(req.url);
+			
+		const now = Date.now();
+		const req_info = $(req);
+		Object.assign(req_info, {
+			req_time: Math.floor(now/1000),
+			req_time_milli: now,
+			session:{authorized:false, token:null}
+		});
+	})
 	.register(FastifyStatic, {
 		root: Config.document_root||`${reroot.project_root}/doc_root`,
 		prefix: '/'
@@ -369,15 +380,7 @@ Promise.chain(async()=>{
 	.register(async(fastify)=>{
 		fastify
 		.addHook('onRequest', async(req, res)=>{
-			console.log(req.url);
-			
-			const now = Date.now();
 			const req_info = $(req);
-			Object.assign(req_info, {
-				req_time: Math.floor(now/1000),
-				req_time_milli: now,
-				session:{authorized:false, token:null}
-			});
 
 			const [algo, token] = (req.headers['authorization']||'').split(' ');
 			if ( algo !== "Bearer" ) return;
