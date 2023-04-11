@@ -233,7 +233,7 @@ Promise.chain(async()=>{
 		
 
 		const errors:string[] = [];
-		if ( exchange_info !== strategy.exchange ) errors.push('Param#1, exchange, mismatched');
+//		if ( exchange_info !== strategy.exchange ) errors.push('Param#1, exchange, mismatched');
 		if ( symbol !== strategy.symbol ) errors.push('Param#2, symbol, mismatched');
         if ( ['long', 'short', 'flat'].includes(positionSide) === false ) errors.push('Param#3, side, invalid');
         if ( Number.isNaN(price) === true || price <= 0 ) errors.push('Param#4, price, not a number or invalid range');
