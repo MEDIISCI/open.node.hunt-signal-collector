@@ -178,7 +178,7 @@ Promise.chain(async()=>{
 	const fastify = Fastify({logger:true});
 
 	fastify
-	.addHook('onRequest', (req, res)=>{
+	.addHook('onRequest', async(req, res)=>{
 		console.log(req.url);
 			
 		const now = Date.now();
