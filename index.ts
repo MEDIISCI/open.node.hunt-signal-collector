@@ -27,6 +27,7 @@ Promise.chain(async()=>{
 	$('system').config_path = $('system').strategy_root + '/strategy.json';
 	$('system').settings_path = $('system').strategy_root + '/settings.json';
 	$('system').states = {};
+	$('system').output_queue = {};
 	
 
 	// Init io subsystem
@@ -64,6 +65,20 @@ Promise.chain(async()=>{
 					$('strategy').update_time = now;
 				}
 				else
+				if ( task.t === 'queue' ) {
+					const output_queue = $('system').output_queue;
+					for(const sid in output_queue) {
+						const queue = output_queue[sid];
+						fs.writeFileSync(
+							$('system').strategy_root + `/queue-${sid}.json`, 
+							JSON.stringify({
+								long:queue.long.queue,
+								short:queue.short.queue
+							})
+						);
+					}
+				}
+				else
 				if ( task.t === 'state' ) {
 					const states = $('system').states;
 					for(const sid in states) {
@@ -92,6 +107,84 @@ Promise.chain(async()=>{
 			.finally(()=>{
 				$('io').timeout = setTimeout(ProcessQueue, 500);
 			});
+		}
+	}
+
+	// Init sigio subsystem
+	{
+		$('sigio').timeout = setTimeout(ProcessRequestQueue, 0);
+		function ProcessRequestQueue() {
+			const queues = $('system').output_queue;
+			for(const sid in queues) {
+				const queue = queues[sid];
+				if ( queue.long.queue.length > 0 && queue.long.current_op === null ) {
+					const req = queue.long.queue[0];
+					console.log("Processing long queue...", req);
+					queue.long.current_op = lib.request(req.url, {
+						method:'POST',
+						headers: { "Content-Type": "application/json; charset=utf-8" },
+						body: JSON.stringify(req.data),
+						timeout: 10_000
+					})
+					.then(async(r)=>{
+						if ( r.status !== 200 ) {
+							const result = await r.text();
+							try {
+								console.error(`Abnornal server response!`, JSON.parse(result));
+							}
+							catch(e) {
+								console.error(`Abnornal server response!`, result);
+							}
+						}
+
+						console.log("Request finished!");
+					})
+					.catch((e)=>{
+						console.error(`Unable to send signal to webhook \`${req.url}\`!`, e)
+					})
+					.finally(()=>{
+						queue.long.current_op = null;
+						queue.long.queue.shift();
+						$('io').queue.push({t:'queue', sid});
+					});
+				}
+
+
+
+				if ( queue.short.queue.length > 0  && queue.short.current_op === null ) {
+					const req = queue.short.queue[0];
+					console.log("Processing short queue...", req);
+					queue.short.current_op = lib.request(req.url, {
+						method:'POST',
+						headers: { "Content-Type": "application/json; charset=utf-8" },
+						body: JSON.stringify(req.data),
+						timeout: 10_000
+					})
+					.then(async(r)=>{
+						if ( r.status !== 200 ) {
+							const result = await r.text();
+							try {
+								console.error(`Abnornal server response!`, JSON.parse(result));
+							}
+							catch(e) {
+								console.error(`Abnornal server response!`, result);
+							}
+						}
+						
+						console.log("Request finished!");
+					})
+					.catch((e)=>{
+						console.error(`Unable to send signal to webhook \`{strategy.hook_url}\`!`, e)
+					})
+					.finally(()=>{
+						queue.short.current_op = null;
+						queue.short.queue.shift();
+						$('io').queue.push({t:'queue', sid});
+					});
+				}
+			}
+
+			$('sigio').timeout = setTimeout(ProcessRequestQueue, 100);
 		}
 	}
 
@@ -148,21 +241,33 @@ Promise.chain(async()=>{
 		Object.assign(conf, JSON.parse(fs.readFileSync($('system').config_path).toString('utf8')) as StrategyConfig);
 		
 
-		const states = $('system').states;
+		const {states, output_queue} = $('system');
+
 		for(const sid in conf.strategy) {
-			const state_path = $('system').strategy_root + `/state-${sid}.json`;
 			const strategy = conf.strategy[sid];
 			states[sid] = {pos_states:{}, update_time:Math.floor(Date.now()/1000)};
+			output_queue[sid] = {long:{current_op:null, queue:[]}, short:{current_op:null, queue:[]}};
+
 			for(const src_id in strategy.sources){
 				states[sid].pos_states[src_id] = {long:false, short:false};
 			}
+			
+			
+			const state_path = $('system').strategy_root + `/state-${sid}.json`;
+			if ( fs.existsSync(state_path) ) {
+				const content = fs.readFileSync(state_path).toString('utf8');
+				const stored_states = JSON.parse(content) as typeof states[string];
+				for(const src_id in strategy.sources){
+					Object.assign(states[sid].pos_states[src_id], stored_states.pos_states[src_id]);
+				}
+			}
 
-
-			if ( !fs.existsSync(state_path) ) continue;
-			const content = fs.readFileSync(state_path).toString('utf8');
-			const stored_states = JSON.parse(content) as typeof states[string];
-			for(const src_id in strategy.sources){
-				Object.assign(states[sid].pos_states[src_id], stored_states.pos_states[src_id]);
+			const queue_path = $('system').strategy_root + `/queue-${sid}.json`;
+			if ( fs.existsSync(queue_path) ) {
+				const content = fs.readFileSync(queue_path).toString('utf8');
+				const stored_queue = JSON.parse(content) as {[side in 'long'|'short']: typeof output_queue[string]['long'|'short']['queue']};
+				output_queue[sid].long.queue.push(...stored_queue.long);
+				output_queue[sid].short.queue.push(...stored_queue.short);
 			}
 		}
 	}
@@ -253,7 +358,9 @@ Promise.chain(async()=>{
         
 
 		const req_info = $(req);
-		const states = $('system').states[strategy.id].pos_states;
+		const {states:_states, output_queue:_output_queue} = $('system');
+		const states = _states[strategy.id].pos_states;
+		const output_queue = _output_queue[strategy.id]
 
 		let prev_long = 0, prev_short = 0;
 		for(const src_id in states) {
@@ -288,6 +395,7 @@ Promise.chain(async()=>{
 				safe_interval: 5_000,
 				time: req_info.req_time
 			};
+
 			if ( long_diff > 0 ) {
 				signal.action = prev_long > 0 ? 'increase' : 'open';
 			}
@@ -295,32 +403,13 @@ Promise.chain(async()=>{
 				signal.action = new_long > 0 ? 'decrease' : 'close';
 			}
 
-			const abort_ctrl = new AbortController();
-			const hTimeout = setTimeout(()=>abort_ctrl.abort(), 10_000);
-			promises.push(
-				fetch(strategy.hook_url, {
-					method:'POST',
-					headers: { "Content-Type": "application/json; charset=utf-8" },
-					body: JSON.stringify(signal),
-					signal:abort_ctrl.signal
-				})
-				.then(async(r)=>{
-					clearTimeout(hTimeout);
 
-					if ( r.status !== 200 ) {
-						const result = await r.text();
-						try {
-							console.error(`Abnornal server response!`, JSON.parse(result));
-						}
-						catch(e) {
-							console.error(`Abnornal server response!`, result);
-						}
-					}
-				})
-				.catch((e)=>{
-					console.error(`Unable to send signal to webhook \`${strategy.hook_url}\`!`, e)
-				})
-			);
+
+			output_queue.long.queue.push({
+				url: strategy.hook_url,
+				data:signal,
+				send_time:0,
+			});
 		}
 
 		if ( short_diff !== 0 ) {
@@ -340,39 +429,20 @@ Promise.chain(async()=>{
 				signal.action = new_short > 0 ? 'decrease' : 'close';
 			}
 
-
-			const abort_ctrl = new AbortController();
-			const hTimeout = setTimeout(()=>abort_ctrl.abort(), 10_000);
-			promises.push(
-				fetch(strategy.hook_url, {
-					method:'POST',
-					headers: { "Content-Type": "application/json; charset=utf-8" },
-					body: JSON.stringify(signal),
-					signal:abort_ctrl.signal
-				})
-				.then(async(r)=>{
-					clearTimeout(hTimeout);
-
-					if ( r.status !== 200 ) {
-						const result = await r.text();
-						try {
-							console.error(`Abnornal server response!`, JSON.parse(result));
-						}
-						catch(e) {
-							console.error(`Abnornal server response!`, result);
-						}
-					}
-				})
-				.catch((e)=>{
-					console.error(`Unable to send signal to webhook \`${strategy.hook_url}\`!`, e)
-				})
-			);
+			output_queue.short.queue.push({
+				url: strategy.hook_url,
+				data:signal,
+				send_time:0,
+			});
 		}
 
-		await Promise.all(promises);
 
-		if ( promises.length > 0 ) {
-			$('io').queue.push({t:'state', sid:strategy.id});
+
+		if ( short_diff !== 0 || long_diff !== 0 ) {
+			$('io').queue.push(
+				{t:'state', sid:strategy.id},
+				{t:'queue', sid:strategy.id}
+			);
 		}
 
 		return res.status(200).send({});
@@ -545,7 +615,7 @@ Promise.chain(async()=>{
 
 				
 				const req_info = $(req);
-				const states = $('system').states;
+				const {states, output_queue} = $('system');
 				const strategies = $('strategy').strategy;
 				const strategy:StrategyInfo = {
 					id: TrimId.NEW.toString(),
@@ -557,6 +627,7 @@ Promise.chain(async()=>{
 					create_time: req_info.req_time
 				};
 				const strategy_states:typeof states[string] = {pos_states:{}, update_time:req_info.req_time};
+				const op_queue:typeof output_queue[string] = {long:{current_op:null, queue:[]}, short:{current_op:null, queue:[]}};
 				
 				for(const _name of sources) {
 					const name = `${_name||''}`.trim();
@@ -572,6 +643,7 @@ Promise.chain(async()=>{
 				}
 				strategies[strategy.id] = strategy;
 				states[strategy.id] = strategy_states;
+				output_queue[strategy.id] = op_queue;
 
 
 				$('io').queue.push({t:'strategy'}, {t:'state', sid:strategy.id});

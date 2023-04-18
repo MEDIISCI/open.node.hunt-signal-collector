@@ -150,3 +150,30 @@ export function ParseSWT<PayloadType={}>(token:string, secret?:Buffer|string):nu
 	if ( verify !== signature ) return false;
 	return content as PayloadType;
 }
+
+
+
+export async function request(url:string, options:(RequestInit&{timeout?:number})|undefined=undefined) {
+    const abort_ctrl = new AbortController();
+	
+    let hTimeout:NodeJS.Timeout|null = null;
+    if ( options !== undefined && Object(options) === options ) {
+        if ( options.timeout !== undefined ) {
+            if ( typeof options.timeout !== "number" ) {
+                throw new TypeError("Field timeout must be a number in milliseconds!");
+            }
+            
+            hTimeout = setTimeout(()=>abort_ctrl.abort(), options.timeout);
+			options.signal = abort_ctrl.signal;
+            delete options.timeout;
+        }
+    }
+    
+    return fetch(url, options).then((r)=>{
+        if ( hTimeout ) {
+			clearTimeout(hTimeout);
+			hTimeout = null;
+		}
+        return r;
+    });
+}

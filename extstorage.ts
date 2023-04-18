@@ -55,7 +55,10 @@ declare global {
 	interface ExtendedSharedStorage {
 		(scope:'io'): {
 			timeout:null|NodeJS.Timeout;
-			queue:({t:'strategy'}|{t:'state',sid:string})[];
+			queue:({t:'strategy'}|{t:'queue', sid?:string}|{t:'state',sid:string})[];
+		};
+		(scope:'sigio'): {
+			timeout:null|NodeJS.Timeout;
 		};
 		(scope:'system'):{
 			strategy_root: string;
@@ -67,6 +70,18 @@ declare global {
 				pos_states: {[sid:string]:{long:boolean; short:boolean}}; // true means opened
 				update_time: epoch;
 			}};
+			output_queue: {
+				[key:StrategyInfo['id']]:{
+					[side in 'long'|'short']: {
+						current_op: null|Promise<void>;
+						queue:{
+							url:string;
+							data:SignalStructureV2;
+							send_time:number;
+						}[]
+					}
+				}
+			}
 		};
 		(scope:'strategy'): StrategyConfig;
 		(scope:FastifyRequest): {
