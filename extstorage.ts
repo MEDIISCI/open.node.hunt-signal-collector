@@ -73,8 +73,10 @@ declare global {
 			output_queue: {
 				[key:StrategyInfo['id']]:{
 					[side in 'long'|'short']: {
-						current_op: null|Promise<void>;
 						queue:{
+							id: string;
+							strategy: string;
+							source: string;
 							url:string;
 							data:SignalStructureV2;
 							send_time:number;

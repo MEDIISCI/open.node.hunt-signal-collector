@@ -17,6 +17,15 @@ import { ErrorCode } from "/error-codes.js";
 
 
 
+const TAG = {
+	prefixes: ['SIGINAL_LOG'],
+	toString:function() {
+		const tags:string[] = [];
+		for(let prefix of this.prefixes) tags.push(`[${prefix}]`);
+		return `${tags.join('')}[${Date.present.toLocaleDateString()}]`;
+	}
+}
+
 Promise.chain(async()=>{
 	console.log("Init with following config: ");
 	console.log(Config);
@@ -96,11 +105,11 @@ Promise.chain(async()=>{
 				if ( !task ) return;
 
 				if ( task.t === 'strategy' ) {
-					console.error("Unable to update strategy runtime file!", e);
+					console.log("Unable to update strategy runtime file!", e);
 				}
 				else 
 				if ( task.t === 'state' ) {
-					console.error("Unable to store strategy state file!", e);
+					console.log("Unable to store strategy state file!", e);
 				}
 				$('io').queue.unshift(task);
 			})
@@ -115,76 +124,72 @@ Promise.chain(async()=>{
 		$('sigio').timeout = setTimeout(ProcessRequestQueue, 0);
 		function ProcessRequestQueue() {
 			const queues = $('system').output_queue;
+			const promises:Promise<void>[] = [];
 			for(const sid in queues) {
 				const queue = queues[sid];
-				if ( queue.long.queue.length > 0 && queue.long.current_op === null ) {
+				if ( queue.long.queue.length > 0 ) {
 					const req = queue.long.queue[0];
-					console.log("Processing long queue...", req);
-					queue.long.current_op = lib.request(req.url, {
+					console.log(`${TAG}[REQ:${req.id}] Processing long request...`, JSON.stringify(req));
+					promises.push(lib.request(req.url, {
 						method:'POST',
 						headers: { "Content-Type": "application/json; charset=utf-8" },
 						body: JSON.stringify(req.data),
 						timeout: 10_000
 					})
 					.then(async(r)=>{
+						const result = await r.text();
 						if ( r.status !== 200 ) {
-							const result = await r.text();
-							try {
-								console.error(`Abnornal server response!`, JSON.parse(result));
-							}
-							catch(e) {
-								console.error(`Abnornal server response!`, result);
-							}
+							console.log(`${TAG}[REQ:${req.id}] Received abnornal server response!`, result);
 						}
-
-						console.log("Request finished!");
+						else {
+							console.log(`${TAG}[REQ:${req.id}] Request finished!`, result);
+							queue.long.queue.shift();
+						}
 					})
 					.catch((e)=>{
-						console.error(`Unable to send signal to webhook \`${req.url}\`!`, e)
+						console.log(`${TAG}[REQ:${req.id}] Unable to send signal to webhook \`${req.url}\`!`, e);
 					})
 					.finally(()=>{
-						queue.long.current_op = null;
-						queue.long.queue.shift();
 						$('io').queue.push({t:'queue', sid});
-					});
+					}));
 				}
 
 
 
-				if ( queue.short.queue.length > 0  && queue.short.current_op === null ) {
+				if ( queue.short.queue.length > 0 ) {
 					const req = queue.short.queue[0];
-					console.log("Processing short queue...", req);
-					queue.short.current_op = lib.request(req.url, {
+					console.log(`${TAG}[REQ:${req.id}] Processing short request...`, JSON.stringify(req));
+					promises.push(lib.request(req.url, {
 						method:'POST',
 						headers: { "Content-Type": "application/json; charset=utf-8" },
 						body: JSON.stringify(req.data),
 						timeout: 10_000
 					})
 					.then(async(r)=>{
+						const result = await r.text();
 						if ( r.status !== 200 ) {
-							const result = await r.text();
-							try {
-								console.error(`Abnornal server response!`, JSON.parse(result));
-							}
-							catch(e) {
-								console.error(`Abnornal server response!`, result);
-							}
+							console.log(`${TAG}[REQ:${req.id}] Received abnornal server response!`, result);
 						}
-						
-						console.log("Request finished!");
+						else {
+							console.log(`${TAG}[REQ:${req.id}] Request finished!`, result);
+							queue.long.queue.shift();
+						}
 					})
 					.catch((e)=>{
-						console.error(`Unable to send signal to webhook \`{strategy.hook_url}\`!`, e)
+						console.log(`${TAG}[REQ:${req.id}] Unable to send signal to webhook \`${req.url}\`!`, e);
 					})
 					.finally(()=>{
-						queue.short.current_op = null;
-						queue.short.queue.shift();
 						$('io').queue.push({t:'queue', sid});
-					});
+					}));
 				}
 			}
 
-			$('sigio').timeout = setTimeout(ProcessRequestQueue, 100);
+
+			Promise.resolve()
+			.then(()=>promises.length > 0 ? Promise.all(promises) : undefined)
+			.finally(()=>{
+				$('sigio').timeout = setTimeout(ProcessRequestQueue, 100);
+			});
 		}
 	}
 
@@ -246,7 +251,7 @@ Promise.chain(async()=>{
 		for(const sid in conf.strategy) {
 			const strategy = conf.strategy[sid];
 			states[sid] = {pos_states:{}, update_time:Math.floor(Date.now()/1000)};
-			output_queue[sid] = {long:{current_op:null, queue:[]}, short:{current_op:null, queue:[]}};
+			output_queue[sid] = {long:{queue:[]}, short:{queue:[]}};
 
 			for(const src_id in strategy.sources){
 				states[sid].pos_states[src_id] = {long:false, short:false};
@@ -302,6 +307,7 @@ Promise.chain(async()=>{
 		const payload = req.body||'';
 		const args = payload.split(',').map((t)=>t.trim());
 
+
 		const strategy = $('strategy').strategy[req.params.strategy_id];
 		if ( !strategy ) {
 			return res.status(404).send({
@@ -323,7 +329,8 @@ Promise.chain(async()=>{
 		}
 
 
-		const exchange_info = `${args[0]}`.toLowerCase();
+
+		console.log(`${TAG}[${req.id}]`, "Received signal:", payload.substring(0, 200), 'for strategy:', strategy.id, 'from source:', source.id);
 		
 		// Exctract symbol
         const _symbol = `${args[1]}`.toUpperCase();
@@ -360,13 +367,16 @@ Promise.chain(async()=>{
 		const req_info = $(req);
 		const {states:_states, output_queue:_output_queue} = $('system');
 		const states = _states[strategy.id].pos_states;
-		const output_queue = _output_queue[strategy.id]
+		const output_queue = _output_queue[strategy.id];
+		const statistics:{[sid:string]:string} = {};
 
 		let prev_long = 0, prev_short = 0;
 		for(const src_id in states) {
 			prev_long += states[src_id].long ? 1 : 0;
 			prev_short += states[src_id].short ? 1 : 0;
+			statistics[src_id] = `${states[src_id].long?'T':'F'}/${states[src_id].short?'T':'F'}`;
 		}
+		console.log(`${TAG}[${req.id}] Pos States Before: ${prev_long}/${prev_short}`, `States: ${JSON.stringify(statistics)}`);
 
 
 		if ( positionSide === 'flat' ) {
@@ -380,11 +390,12 @@ Promise.chain(async()=>{
 		for(const src_id in states) {
 			new_long += states[src_id].long ? 1 : 0;
 			new_short += states[src_id].short ? 1 : 0;
+			statistics[src_id] = `${states[src_id].long?'T':'F'}/${states[src_id].short?'T':'F'}`;
 		}
+		console.log(`${TAG}[${req.id}] Pos States After: ${new_long}/${new_short}`, `States: ${JSON.stringify(statistics)}`);
 
 		
 		const long_diff = new_long - prev_long, short_diff = new_short - prev_short;
-		const promises:Promise<void>[] = [];
 		if ( long_diff !== 0 ) {
 			const signal:SignalStructureV2 = {
 				version: "2",
@@ -392,7 +403,7 @@ Promise.chain(async()=>{
 				symbol: strategy.symbol,
 				side:'long',
 				action: 'increase',
-				safe_interval: 5_000,
+				safe_interval: 30_000,
 				time: req_info.req_time
 			};
 
@@ -404,8 +415,13 @@ Promise.chain(async()=>{
 			}
 
 
+			const TaskId = TrimId.NEW.toString();
+			console.log(`${TAG}[${req.id}] Scheduling ${signal.side}.${signal.action} signaling task(${TaskId})...`);
 
 			output_queue.long.queue.push({
+				id: TrimId.NEW.toString(),
+				strategy: strategy.id,
+				source: source.id,
 				url: strategy.hook_url,
 				data:signal,
 				send_time:0,
@@ -419,7 +435,7 @@ Promise.chain(async()=>{
 				symbol: strategy.symbol,
 				side:'short',
 				action: 'increase',
-				safe_interval: 5_000,
+				safe_interval: 30_000,
 				time: req_info.req_time
 			};
 			if ( short_diff > 0 ) {
@@ -429,7 +445,13 @@ Promise.chain(async()=>{
 				signal.action = new_short > 0 ? 'decrease' : 'close';
 			}
 
+			const TaskId = TrimId.NEW.toString();
+			console.log(`${TAG}[${req.id}] Scheduling ${signal.side}.${signal.action} signaling task(${TaskId})...`);
+
 			output_queue.short.queue.push({
+				id: TrimId.NEW.toString(),
+				strategy: strategy.id,
+				source: source.id,
 				url: strategy.hook_url,
 				data:signal,
 				send_time:0,
@@ -627,7 +649,7 @@ Promise.chain(async()=>{
 					create_time: req_info.req_time
 				};
 				const strategy_states:typeof states[string] = {pos_states:{}, update_time:req_info.req_time};
-				const op_queue:typeof output_queue[string] = {long:{current_op:null, queue:[]}, short:{current_op:null, queue:[]}};
+				const op_queue:typeof output_queue[string] = {long:{queue:[]}, short:{queue:[]}};
 				
 				for(const _name of sources) {
 					const name = `${_name||''}`.trim();
@@ -682,7 +704,7 @@ Promise.chain(async()=>{
 		});
 	}, {prefix:'/api'})
 	.setErrorHandler((err, req, res)=>{
-		console.error(err);
+		console.log(`${TAG} Received error when processing request (${req.id})`, err);
 		res.status(500).send({
 			code: ErrorCode.UNKOWN_ERROR,
 			message: "Unexpected error has been occurred!",
