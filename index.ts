@@ -5,6 +5,7 @@ import crypto from "crypto";
 import Fastify from "fastify";
 import TrimId from "trimid";
 import $ from "shared-storage";
+import util from "util";
 import FastifyStatic from "@fastify/static";
 
 import reroot from "reroot";
@@ -22,13 +23,13 @@ const TAG = {
 	toString:function() {
 		const tags:string[] = [];
 		for(let prefix of this.prefixes) tags.push(`[${prefix}]`);
-		return `${tags.join('')}[${Date.present.toLocaleDateString()}]`;
+		return `${tags.join('')}[${Date.present.toLocaleISOString()}]`;
 	}
 }
 
 Promise.chain(async()=>{
 	console.log("Init with following config: ");
-	console.log(Config);
+	console.log(util.inspect(Config, {showHidden: false, depth: null, colors:process.stdout.isTTY}));
 
 
 	// Init variables
@@ -139,7 +140,7 @@ Promise.chain(async()=>{
 					.then(async(r)=>{
 						const result = await r.text();
 						if ( r.status !== 200 ) {
-							console.log(`${TAG}[REQ:${req.id}] Received abnornal server response!`, result);
+							console.log(`${TAG}[REQ:${req.id}] Received abnormal server response from webhook \`${req.url}\`!`, result);
 						}
 						else {
 							console.log(`${TAG}[REQ:${req.id}] Request finished!`, result);
@@ -153,9 +154,7 @@ Promise.chain(async()=>{
 						$('io').queue.push({t:'queue', sid});
 					}));
 				}
-
-
-
+				
 				if ( queue.short.queue.length > 0 ) {
 					const req = queue.short.queue[0];
 					console.log(`${TAG}[REQ:${req.id}] Processing short request...`, JSON.stringify(req));
@@ -172,7 +171,7 @@ Promise.chain(async()=>{
 						}
 						else {
 							console.log(`${TAG}[REQ:${req.id}] Request finished!`, result);
-							queue.long.queue.shift();
+							queue.short.queue.shift();
 						}
 					})
 					.catch((e)=>{
@@ -278,10 +277,10 @@ Promise.chain(async()=>{
 	}
 
 	console.log("System strategy runtime initialized:");
-	console.log($('strategy'));
+	console.log(util.inspect($('strategy'), {showHidden: false, depth: null, colors:process.stdout.isTTY}));
 
 	console.log("System strategy state initialized:");
-	console.log($('system').states);
+	console.log(util.inspect($('system').states, {showHidden: false, depth: null, colors:process.stdout.isTTY}));
 
 
 
@@ -289,8 +288,7 @@ Promise.chain(async()=>{
 
 	fastify
 	.addHook('onRequest', async(req, res)=>{
-		console.log(req.url);
-			
+		console.log(`${TAG}[${req.id}] Incoming request: ${req.method} ${req.url}`);
 		const now = Date.now();
 		const req_info = $(req);
 		Object.assign(req_info, {
