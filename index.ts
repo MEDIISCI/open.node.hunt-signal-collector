@@ -336,7 +336,8 @@ Promise.chain(async()=>{
 		if ( usdt_pos < 0 ) return;
 		const symbol = _symbol.substring(0, usdt_pos + 4);
 		
-        const positionSide = `${args[2]}`.toLowerCase() as 'long'|'short'|'flat';
+		const _side = `${args[2]}`.toLowerCase();
+		const side = _side.split(' ').pop()! as 'long'|'short'|'flat';
         const price = Number(args[3] as num_str);
         const orderSide = `${args[4]}`.toLowerCase() as 'buy'|'sell';
         const amount = Number(args[5] as num_str);
@@ -345,7 +346,7 @@ Promise.chain(async()=>{
 		const errors:string[] = [];
 //		if ( exchange_info !== strategy.exchange ) errors.push('Param#1, exchange, mismatched');
 		if ( symbol !== strategy.symbol ) errors.push('Param#2, symbol, mismatched');
-        if ( ['long', 'short', 'flat'].includes(positionSide) === false ) errors.push('Param#3, side, invalid');
+        if ( ['long', 'short', 'flat'].includes(side) === false ) errors.push('Param#3, side, invalid');
         if ( Number.isNaN(price) === true || price <= 0 ) errors.push('Param#4, price, not a number or invalid range');
         if ( ['buy', 'sell'].includes(orderSide) === false ) errors.push('Param#5, direction, invalid');
         if ( Number.isNaN(amount) === true || amount < 0 ) errors.push('Param#6, amount, not a number or invalid range');
@@ -377,11 +378,11 @@ Promise.chain(async()=>{
 		console.log(`${TAG}[${req.id}] Pos States Before: ${prev_long}/${prev_short}`, `States: ${JSON.stringify(statistics)}`);
 
 
-		if ( positionSide === 'flat' ) {
+		if ( side === 'flat' ) {
 			states[source.id].long = states[source.id].short = false;
 		}
 		else {
-			states[source.id][positionSide] = amount > 0;
+			states[source.id][side] = amount > 0;
 		}
 		
 		let new_long = 0, new_short = 0;
