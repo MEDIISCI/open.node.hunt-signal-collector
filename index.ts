@@ -350,7 +350,7 @@ Promise.chain(async()=>{
         if ( Number.isNaN(price) === true || price <= 0 ) errors.push('Param#4, price, not a number or invalid range');
         if ( ['buy', 'sell'].includes(orderSide) === false ) errors.push('Param#5, direction, invalid');
         if ( Number.isNaN(amount) === true || amount < 0 ) errors.push('Param#6, amount, not a number or invalid range');
-		if ( amount > 0 && positionSide === 'flat' ) errors.push('Param#3 and Param#6, condition mismatched');
+		if ( amount > 0 && side === 'flat' ) errors.push('Param#3 and Param#6, condition mismatched');
 		if ( errors.length > 0 ) {
 			return res.status(400).send({
 				scope: req.routerPath,
