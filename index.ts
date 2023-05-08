@@ -337,21 +337,31 @@ Promise.chain(async()=>{
 		const symbol = _symbol.substring(0, usdt_pos + 4);
 		
 		const _side = `${args[2]}`.toLowerCase();
-		const side = _side.split(' ').pop()! as 'long'|'short'|'flat';
+		const side = _side.split(' ').pop()! as string;
         const price = Number(args[3] as num_str);
         const orderSide = `${args[4]}`.toLowerCase() as 'buy'|'sell';
         const amount = Number(args[5] as num_str);
 		
 
 		const errors:string[] = [];
+		const pos_side_candidates:{[key:string]:'long'|'short'} = {
+			long:'long', 
+			l_1: 'long',
+			l_2: 'long',
+
+			short: 'short',
+			s_1: 'short',
+			s_2: 'short',
+		};
 //		if ( exchange_info !== strategy.exchange ) errors.push('Param#1, exchange, mismatched');
 		if ( symbol !== strategy.symbol ) errors.push('Param#2, symbol, mismatched');
-        if ( ['long', 'short', 'flat'].includes(side) === false ) errors.push('Param#3, side, invalid');
+        if ( side !== 'flat' && pos_side_candidates[side] === undefined ) errors.push('Param#3, side, invalid');
         if ( Number.isNaN(price) === true || price <= 0 ) errors.push('Param#4, price, not a number or invalid range');
         if ( ['buy', 'sell'].includes(orderSide) === false ) errors.push('Param#5, direction, invalid');
         if ( Number.isNaN(amount) === true || amount < 0 ) errors.push('Param#6, amount, not a number or invalid range');
 		if ( amount > 0 && side === 'flat' ) errors.push('Param#3 and Param#6, condition mismatched');
 		if ( errors.length > 0 ) {
+			console.log("Format Error:", errors);
 			return res.status(400).send({
 				scope: req.routerPath,
 				code: ErrorCode.INVALID_PAYLOAD_CONTENTS,
@@ -382,7 +392,8 @@ Promise.chain(async()=>{
 			states[source.id].long = states[source.id].short = false;
 		}
 		else {
-			states[source.id][side] = amount > 0;
+			const new_side = pos_side_candidates[side];
+			states[source.id][new_side] = amount > 0;
 		}
 		
 		let new_long = 0, new_short = 0;
